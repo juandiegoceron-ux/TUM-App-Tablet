@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "74080605509",
+    "project_id": "db-tum",
+    "storage_bucket": "db-tum.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:74080605509:android:4ea676fcf3b6813e5c5a2c",
+        "android_client_info": {
+          "package_name": "com.example.tum_beta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUDdElL34gEN2UsZk5liJNhv1ts769riE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

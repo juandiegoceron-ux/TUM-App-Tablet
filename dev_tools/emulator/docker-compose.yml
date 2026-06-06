@@ -1,0 +1,19 @@
+services:
+  matepad_t10_emulator:
+    image: budtmo/docker-android:emulator_10.0
+    container_name: matepad_t10_emulador
+    privileged: true
+    shm_size: '2gb'
+    ports:
+      - "6080:6080"
+      - "5554:5554"
+      - "5555:5555"
+    environment:
+      - DEVICE=Nexus 5
+      # La magia: forzamos renderizado por CPU y apagamos hardware problemático
+      - EMULATOR_ARGS=-no-audio -no-boot-anim -gpu swiftshader_indirect
+    devices:
+      - /dev/kvm:/dev/kvm
+    volumes:
+      - ./data:/data
+    restart: always
