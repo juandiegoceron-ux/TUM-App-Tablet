@@ -12,7 +12,20 @@
           "package_name": "com.example.tum_beta"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "74080605509-1k2f0o0d938csostbqiutjchjmql116k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tum_beta",
+            "certificate_hash": "6b5ff7f623495f0c5fc4fe7c10366bd40018d4ef"
+          }
+        },
+        {
+          "client_id": "74080605509-18q42bgrgnpgsdfv74prjulr4f1urjm1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAUDdElL34gEN2UsZk5liJNhv1ts769riE"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "74080605509-18q42bgrgnpgsdfv74prjulr4f1urjm1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "74080605509-1ska5n550mh5k9u4ik60icnkr94s1765.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tumBeta"
+              }
+            }
+          ]
         }
       }
     }
