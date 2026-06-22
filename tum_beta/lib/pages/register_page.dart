@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:tum_beta/components/my_button.dart';
 import 'package:tum_beta/components/my_textfield.dart';
-import 'package:tum_beta/components/square_tile.dart';
 import 'package:tum_beta/services/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -33,10 +33,23 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       if (passwordController.text == confirmPasswordController.text) {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
         );
+
+        // Guardar detalles del usuario en Firestore (iniciar el perfil de explorador)
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+          'email': emailController.text.trim(),
+          'role': 'explorador',
+          'createdAt': FieldValue.serverTimestamp(),
+          'progress': {
+            'completedActivities': 0,
+            'totalActivities': 12,
+            'generalProgress': 0.0,
+          }
+        });
+
         navigator.pop();
       } else {
         navigator.pop();
@@ -79,8 +92,23 @@ class _RegisterPageState extends State<RegisterPage> {
       
       navigator.pop();
 
-      if (userCredential == null && mounted) {
-        showErrorMessage("Registro con Google cancelado o fallido.");
+      if (userCredential != null) {
+        // Verificar si el documento del usuario ya existe en Firestore
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
+        if (!userDoc.exists) {
+          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+            'email': userCredential.user!.email ?? '',
+            'role': 'explorador',
+            'createdAt': FieldValue.serverTimestamp(),
+            'progress': {
+              'completedActivities': 0,
+              'totalActivities': 12,
+              'generalProgress': 0.0,
+            }
+          });
+        }
+      } else if (mounted) {
+        showErrorMessage("Registro con Google cancelado.");
       }
     } catch (e) {
       navigator.pop();
@@ -112,150 +140,195 @@ class _RegisterPageState extends State<RegisterPage> {
     double screenWidth = MediaQuery.of(context).size.width;
     bool isTablet = screenWidth >= 768;
 
-    if (isTablet) {
-      return Scaffold(
-        backgroundColor: Colors.grey[300],
-        body: Row(
-          children: [
-            // Left Panel: Brand & Illustration (Visible only on tablets/desktops)
-            Expanded(
-              flex: 5,
+    return Scaffold(
+      backgroundColor: const Color(0xFF4A7356), // Outer background
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
               child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF0F2027),
-                      Color(0xFF203A43),
-                      Color(0xFF2C5364),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                constraints: BoxConstraints(
+                  maxWidth: isTablet ? 1100 : 450,
+                  maxHeight: isTablet ? 580 : double.infinity,
                 ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(40.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.school_outlined,
-                            size: 64,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        const Text(
-                          "TUM App",
-                          style: TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          "Crea tu cuenta hoy y comienza a disfrutar de la experiencia unificada en todos tus dispositivos.",
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white.withValues(alpha: 0.8),
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        Row(
-                          children: [
-                            Icon(Icons.check_circle_outline, color: Colors.greenAccent[400], size: 20),
-                            const SizedBox(width: 8),
-                            const Text("Seguro", style: TextStyle(color: Colors.white70)),
-                            const SizedBox(width: 20),
-                            Icon(Icons.check_circle_outline, color: Colors.greenAccent[400], size: 20),
-                            const SizedBox(width: 8),
-                            const Text("Rápido", style: TextStyle(color: Colors.white70)),
-                            const SizedBox(width: 20),
-                            Icon(Icons.check_circle_outline, color: Colors.greenAccent[400], size: 20),
-                            const SizedBox(width: 8),
-                            const Text("Responsivo", style: TextStyle(color: Colors.white70)),
-                          ],
-                        )
-                      ],
-                    ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E4A3F), // Inner forest green background
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ]
+                ),
+                child: isTablet
+                    ? _buildTabletLayout(context)
+                    : _buildMobileLayout(context),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout(BuildContext context) {
+    return Row(
+      children: [
+        // Left Side: Form
+        Expanded(
+          flex: 5,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
+            child: Center(
+              child: SingleChildScrollView(
+                child: _buildRegisterForm(context, isMobile: false),
+              ),
+            ),
+          ),
+        ),
+        // Right Side: Card Selection (Figma cards)
+        Expanded(
+          flex: 5,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF243F33),
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+              border: Border(
+                left: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Center(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildProfileCard(
+                        title: "Explorador Curioso",
+                        subtitle: "¡Aprende jugando!",
+                        backgroundColor: const Color(0xFFEAA646),
+                        icon: Icons.explore_rounded,
+                      ),
+                      const SizedBox(width: 20),
+                      _buildProfileCard(
+                        title: "Aprende STEM",
+                        subtitle: "¡Descubre la ciencia!",
+                        backgroundColor: const Color(0xFF538666),
+                        icon: Icons.science_rounded,
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-            // Right Panel: Form
-            Expanded(
-              flex: 4,
-              child: Container(
-                color: Colors.grey[100],
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 460),
-                      padding: const EdgeInsets.all(24.0),
-                      child: Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        color: Colors.white,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 40.0),
-                          child: _buildRegisterForm(context, isMobile: false),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildRegisterForm(context, isMobile: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard({
+    required String title,
+    required String subtitle,
+    required Color backgroundColor,
+    required IconData icon,
+  }) {
+    return Container(
+      width: 180,
+      height: 240,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
               ),
             ),
           ],
         ),
-      );
-    } else {
-      // Mobile View
-      return Scaffold(
-        backgroundColor: Colors.grey[300],
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              child: _buildRegisterForm(context, isMobile: true),
-            ),
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   Widget _buildRegisterForm(BuildContext context, {required bool isMobile}) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (isMobile) ...[
-          const SizedBox(height: 25),
-          const Icon(
-            Icons.lock,
-            size: 50,
-          ),
-          const SizedBox(height: 25),
-        ],
-
-        Text(
-          isMobile ? 'Let\'s create an account!' : '¡Crea una cuenta nueva!',
+        const Text(
+          'Tu cuenta define tu perfil de explorador',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.grey[700],
-            fontSize: isMobile ? 16 : 22,
-            fontWeight: isMobile ? FontWeight.normal : FontWeight.bold,
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
 
@@ -264,94 +337,116 @@ class _RegisterPageState extends State<RegisterPage> {
         // EMAIL
         MyTextfield(
           controller: emailController,
-          hintText: 'Email',
+          hintText: 'Nombre / correo',
           obscureText: false,
+          prefixIcon: const Icon(
+            Icons.alternate_email_rounded,
+            color: Colors.white70,
+            size: 20,
+          ),
+          fillColor: const Color(0xFF243F33),
+          enabledBorderColor: Colors.white.withValues(alpha: 0.1),
+          focusedBorderColor: const Color(0xFF83A98B),
+          style: const TextStyle(color: Colors.white),
+          hintStyle: const TextStyle(color: Colors.white60),
         ),
-        const SizedBox(height: 10),
+        
+        const SizedBox(height: 12),
+        
         // PASSWORD
         MyTextfield(
           controller: passwordController,
-          hintText: 'Password',
+          hintText: 'Contraseña',
           obscureText: true,
+          prefixIcon: const Icon(
+            Icons.lock_outline_rounded,
+            color: Colors.white70,
+            size: 20,
+          ),
+          fillColor: const Color(0xFF243F33),
+          enabledBorderColor: Colors.white.withValues(alpha: 0.1),
+          focusedBorderColor: const Color(0xFF83A98B),
+          style: const TextStyle(color: Colors.white),
+          hintStyle: const TextStyle(color: Colors.white60),
         ),
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 12),
+
         // CONFIRM PASSWORD
         MyTextfield(
           controller: confirmPasswordController,
-          hintText: 'Confirm Password',
+          hintText: 'Confirmar Contraseña',
           obscureText: true,
+          prefixIcon: const Icon(
+            Icons.lock_outline_rounded,
+            color: Colors.white70,
+            size: 20,
+          ),
+          fillColor: const Color(0xFF243F33),
+          enabledBorderColor: Colors.white.withValues(alpha: 0.1),
+          focusedBorderColor: const Color(0xFF83A98B),
+          style: const TextStyle(color: Colors.white),
+          hintStyle: const TextStyle(color: Colors.white60),
         ),
 
         const SizedBox(height: 25),
 
+        // Finalizar Button
         MyButton(
-          text: "Sign Up",
+          text: "Finalizar",
           onTap: signUserUp,
+          backgroundColor: Colors.white,
+          textColor: const Color(0xFF2E4A3F),
+          borderRadius: 30,
+          trailingIcon: const Icon(
+            Icons.check_rounded,
+            color: Color(0xFF2E4A3F),
+            size: 18,
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 40),
         ),
 
-        const SizedBox(height: 50),
+        const SizedBox(height: 20),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Row(
-            children: [
-              Expanded(
-                child: Divider(
-                  thickness: 0.5,
-                  color: Colors.grey[400],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: Text(
-                  'Or continue with',
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-              ),
-              Expanded(
-                child: Divider(
-                  thickness: 0.5,
-                  color: Colors.grey[400],
-                ),
-              ),
-            ],
+        // Link: Login now
+        GestureDetector(
+          onTap: widget.onTap,
+          child: const Text(
+            '¿Ya tienes cuenta? Inicia sesión',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              decoration: TextDecoration.underline,
+              decorationColor: Colors.white70,
+            ),
           ),
         ),
 
-        const SizedBox(height: 50),
+        const SizedBox(height: 25),
 
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SquareTile(
-              imagePath: 'lib/images/google.png',
-              onTap: signUserUpWithGoogle,
+        // Google Button
+        GestureDetector(
+          onTap: signUserUpWithGoogle,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                )
+              ]
             ),
-          ],
+            child: Image.asset(
+              'lib/images/google.png',
+              height: 32,
+              width: 32,
+            ),
+          ),
         ),
-
-        const SizedBox(height: 50),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Already have an account?',
-              style: TextStyle(color: Colors.grey[700]),
-            ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: widget.onTap,
-              child: const Text(
-                'Login now',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        )
       ],
     );
   }

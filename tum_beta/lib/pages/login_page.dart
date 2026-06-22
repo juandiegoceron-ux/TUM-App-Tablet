@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:tum_beta/components/my_button.dart';
 import 'package:tum_beta/components/my_textfield.dart';
-import 'package:tum_beta/components/square_tile.dart';
 import 'package:tum_beta/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -72,8 +72,23 @@ class _LoginPageState extends State<LoginPage> {
       
       navigator.pop();
 
-      if (userCredential == null && mounted) {
-        showErrorMessage("Inicio de sesión con Google cancelado o fallido.");
+      if (userCredential != null) {
+        // Verificar si el documento del usuario ya existe en Firestore
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
+        if (!userDoc.exists) {
+          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+            'email': userCredential.user!.email ?? '',
+            'role': 'explorador',
+            'createdAt': FieldValue.serverTimestamp(),
+            'progress': {
+              'completedActivities': 0,
+              'totalActivities': 12,
+              'generalProgress': 0.0,
+            }
+          });
+        }
+      } else if (mounted) {
+        showErrorMessage("Inicio de sesión con Google cancelado.");
       }
     } catch (e) {
       navigator.pop();
@@ -105,254 +120,219 @@ class _LoginPageState extends State<LoginPage> {
     double screenWidth = MediaQuery.of(context).size.width;
     bool isTablet = screenWidth >= 768;
 
-    if (isTablet) {
-      return Scaffold(
-        backgroundColor: Colors.grey[300],
-        body: Row(
-          children: [
-            // Left Panel: Brand & Illustration (Visible only on tablets/desktops)
-            Expanded(
-              flex: 5,
+    return Scaffold(
+      backgroundColor: const Color(0xFF4A7356), // Outer background color from Figma
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
               child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF0F2027),
-                      Color(0xFF203A43),
-                      Color(0xFF2C5364),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                constraints: BoxConstraints(
+                  maxWidth: isTablet ? 1100 : 450,
+                  maxHeight: isTablet ? 550 : double.infinity,
                 ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(40.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.school_outlined,
-                            size: 64,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        const Text(
-                          "TUM App",
-                          style: TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          "Gestiona y monitorea tu información académica de manera ágil y segura en todos tus dispositivos.",
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white.withValues(alpha: 0.8),
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        Row(
-                          children: [
-                            Icon(Icons.check_circle_outline, color: Colors.greenAccent[400], size: 20),
-                            const SizedBox(width: 8),
-                            const Text("Seguro", style: TextStyle(color: Colors.white70)),
-                            const SizedBox(width: 20),
-                            Icon(Icons.check_circle_outline, color: Colors.greenAccent[400], size: 20),
-                            const SizedBox(width: 8),
-                            const Text("Rápido", style: TextStyle(color: Colors.white70)),
-                            const SizedBox(width: 20),
-                            Icon(Icons.check_circle_outline, color: Colors.greenAccent[400], size: 20),
-                            const SizedBox(width: 8),
-                            const Text("Responsivo", style: TextStyle(color: Colors.white70)),
-                          ],
-                        )
-                      ],
-                    ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E4A3F), // Inner forest green background
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    width: 1,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ]
                 ),
+                child: isTablet
+                    ? _buildTabletLayout(context)
+                    : _buildMobileLayout(context),
               ),
-            ),
-            // Right Panel: Form
-            Expanded(
-              flex: 4,
-              child: Container(
-                color: Colors.grey[100],
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 460),
-                      padding: const EdgeInsets.all(24.0),
-                      child: Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        color: Colors.white,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 40.0),
-                          child: _buildLoginForm(context, isMobile: false),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      // Mobile View
-      return Scaffold(
-        backgroundColor: Colors.grey[300],
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              child: _buildLoginForm(context, isMobile: true),
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout(BuildContext context) {
+    return Row(
+      children: [
+        // Left Side: Peeking Bear Image
+        Expanded(
+          flex: 1,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(28),
+              bottomLeft: Radius.circular(28),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 20.0),
+                child: SizedBox(
+                  height: 380,
+                  child: Image.asset(
+                    'lib/images/oso_asomado.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Right Side: Form
+        Expanded(
+          flex: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
+            child: Center(
+              child: SingleChildScrollView(
+                child: _buildLoginForm(context, isMobile: false),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Bear Peeking from the top-left on mobile, or showing half
+          SizedBox(
+            height: 150,
+            child: Image.asset(
+              'lib/images/oso_asomado.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildLoginForm(context, isMobile: true),
+        ],
+      ),
+    );
   }
 
   Widget _buildLoginForm(BuildContext context, {required bool isMobile}) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (isMobile) ...[
-          const SizedBox(height: 25),
-          const Icon(
-            Icons.lock,
-            size: 50,
-          ),
-          const SizedBox(height: 25),
-        ],
-
-        Text(
-          isMobile ? 'Welcome back!' : '¡Bienvenido de nuevo!',
+        const Text(
+          'Tu cuenta define tu perfil de explorador',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.grey[700],
-            fontSize: isMobile ? 16 : 22,
-            fontWeight: isMobile ? FontWeight.normal : FontWeight.bold,
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
 
         const SizedBox(height: 25),
 
-        // USERNAME
+        // USERNAME / EMAIL
         MyTextfield(
           controller: emailController,
-          hintText: 'Username',
+          hintText: 'Nombre / correo',
           obscureText: false,
+          prefixIcon: const Icon(
+            Icons.alternate_email_rounded,
+            color: Colors.white70,
+            size: 20,
+          ),
+          fillColor: const Color(0xFF243F33),
+          enabledBorderColor: Colors.white.withValues(alpha: 0.1),
+          focusedBorderColor: const Color(0xFF83A98B),
+          style: const TextStyle(color: Colors.white),
+          hintStyle: const TextStyle(color: Colors.white60),
         ),
-        const SizedBox(height: 10),
+        
+        const SizedBox(height: 12),
+        
         // PASSWORD
         MyTextfield(
           controller: passwordController,
-          hintText: '*************',
+          hintText: 'Contraseña',
           obscureText: true,
-        ),
-
-        const SizedBox(height: 10),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(
-                'Forgot Password?',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ],
+          prefixIcon: const Icon(
+            Icons.lock_outline_rounded,
+            color: Colors.white70,
+            size: 20,
           ),
+          fillColor: const Color(0xFF243F33),
+          enabledBorderColor: Colors.white.withValues(alpha: 0.1),
+          focusedBorderColor: const Color(0xFF83A98B),
+          style: const TextStyle(color: Colors.white),
+          hintStyle: const TextStyle(color: Colors.white60),
         ),
 
-        const SizedBox(height: 25),
+        const SizedBox(height: 20),
 
+        // Entrar Button
         MyButton(
-          text: "Sign In",
+          text: "Entrar",
           onTap: signUserIn,
+          backgroundColor: Colors.white,
+          textColor: const Color(0xFF2E4A3F),
+          borderRadius: 30,
+          trailingIcon: const Icon(
+            Icons.arrow_forward_rounded,
+            color: Color(0xFF2E4A3F),
+            size: 18,
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 40),
         ),
 
-        const SizedBox(height: 50),
+        const SizedBox(height: 20),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Row(
-            children: [
-              Expanded(
-                child: Divider(
-                  thickness: 0.5,
-                  color: Colors.grey[400],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: Text(
-                  'Or continue with',
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-              ),
-              Expanded(
-                child: Divider(
-                  thickness: 0.5,
-                  color: Colors.grey[400],
-                ),
-              ),
-            ],
+        // Link: Register now
+        GestureDetector(
+          onTap: widget.onTap,
+          child: const Text(
+            '¿No estás registrado? Crea tu cuenta',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              decoration: TextDecoration.underline,
+              decorationColor: Colors.white70,
+            ),
           ),
         ),
 
-        const SizedBox(height: 50),
+        const SizedBox(height: 30),
 
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SquareTile(
-              imagePath: 'lib/images/google.png',
-              onTap: signUserInWithGoogle,
+        // Google Button
+        GestureDetector(
+          onTap: signUserInWithGoogle,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                )
+              ]
             ),
-          ],
+            child: Image.asset(
+              'lib/images/google.png',
+              height: 32,
+              width: 32,
+            ),
+          ),
         ),
-
-        const SizedBox(height: 50),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Not a member?',
-              style: TextStyle(color: Colors.grey[700]),
-            ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: widget.onTap,
-              child: const Text(
-                'Register now',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        )
       ],
     );
   }

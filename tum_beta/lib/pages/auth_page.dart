@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tum_beta/pages/home_page.dart';
-import 'package:tum_beta/pages/login_or_register_page.dart';
+import 'package:tum_beta/pages/inicio_page.dart';
 
 class AuthPage extends StatelessWidget {
   const AuthPage({super.key});
@@ -16,7 +16,7 @@ class AuthPage extends StatelessWidget {
               return HomePage();
             }
             else{
-              return LoginOrRegisterPage();
+              return const InicioPage();
             }
           },
       ),
