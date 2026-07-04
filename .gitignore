@@ -5,8 +5,16 @@ Desktop.ini
 .idea/
 *.iml
 
-dev_tools/emulator/data/
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
+# Production build
+dist/
+
+# Flutter leftover (for safety if any)
 .dart_tool/
 .flutter-plugins-dependencies
 .pub/
