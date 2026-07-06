@@ -1,15 +1,15 @@
 import React, { useState } from 'react'
 import './Login.css'
 
-function Login({ onLogin, onBack }) {
-  const [email, setEmail] = useState('jorgeguzman@gmail.com')
-  const [password, setPassword] = useState('password123')
+function Login({ onLogin, onBack, onRegisterNav }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const handleSubmit = (e) => {
     e.preventDefault()
     // Simple mock name derivation from email
-    let derivedName = 'Jorge Guzmán'
-    if (email !== 'jorgeguzman@gmail.com') {
+    let derivedName = ''
+    if (email) {
       const parts = email.split('@')[0].split(/[._-]/)
       derivedName = parts.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
     }
@@ -112,7 +112,7 @@ function Login({ onLogin, onBack }) {
           </form>
 
           <p className="login-register-link">
-            ¿No estás registrado? <span>Crea tu cuenta</span>
+            ¿No estás registrado? <span onClick={onRegisterNav} style={{ cursor: 'pointer' }}>Crea tu cuenta</span>
           </p>
 
           {/* Google login option */}

@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
 import Welcome from './components/Welcome'
 import Login from './components/Login'
+import Register from './components/Register'
 import Dashboard from './components/Dashboard'
 
 function App() {
   const [page, setPage] = useState('welcome')
-  const [user, setUser] = useState({
-    name: 'Jorge Guzmán',
-    email: 'jorgeguzman@gmail.com'
-  })
+  const [user, setUser] = useState(null)
 
   return (
     <div className="app-container">
@@ -22,6 +20,16 @@ function App() {
             setPage('dashboard');
           }} 
           onBack={() => setPage('welcome')}
+          onRegisterNav={() => setPage('register')}
+        />
+      )}
+      {page === 'register' && (
+        <Register 
+          onRegister={(userData) => {
+            setUser(userData);
+            setPage('dashboard');
+          }} 
+          onBack={() => setPage('login')}
         />
       )}
       {page === 'dashboard' && (
@@ -38,3 +46,4 @@ function App() {
 }
 
 export default App
+
